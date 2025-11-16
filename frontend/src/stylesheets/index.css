@@ -498,6 +498,76 @@ dialog:not(.dialog--maximized) {
   flex-direction: column;
 }
 
+/* Help dialog (keyboard shortcuts) */
+dialog.help-dialog {
+  width: auto;
+  height: auto;
+  max-width: 400px;
+  max-height: 80vh;
+}
+
+.help-dialog__body {
+  padding: 20px;
+  gap: 16px;
+  overflow: auto;
+  line-height: 1.2;
+}
+
+.help-dialog__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.help-dialog__title {
+  margin: 0;
+  font-size: 20px;
+  color: var(--color-foreground);
+}
+
+.help-dialog__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.help-dialog__section-title {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--color-foreground);
+}
+
+.help-dialog__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.help-dialog__key-cell {
+  padding: 3px 12px 3px 0;
+  font-family: monospace;
+  white-space: nowrap;
+  color: var(--color-foreground);
+}
+
+.help-dialog__desc-cell {
+  padding: 3px 0;
+  color: var(--color-foreground);
+}
+
+.help-dialog__footer {
+  text-align: center;
+  margin-top: 12px;
+}
+
+.help-dialog__ok-btn {
+  padding: 6px 20px;
+}
+
 .input-and-error-msg {
   position: relative;
   display: flex;
@@ -846,17 +916,6 @@ a > * {
   outline: 1px solid var(--color-accent);
   outline-offset: 2px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.card--focused {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(var(--color-accent-rgb, 59, 130, 246), 0.1);
-}
-
-.card--focused:focus {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
 }
 
 /* Header button active state */

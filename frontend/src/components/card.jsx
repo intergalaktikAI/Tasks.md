@@ -13,7 +13,6 @@ import { handleKeyDown } from "../utils";
  * @param {boolean} props.selectionMode
  * @param {boolean} props.isSelected
  * @param {Function} props.onSelectionChange
- * @param {boolean} props.isFocused
  * @param {Function} props.onFocus
  */
 export function Card(props) {
@@ -48,7 +47,7 @@ export function Card(props) {
     <div
       role="button"
       id={`card-${props.name}`}
-      class={`card ${props.disableDrag ? "card__drag-disabled" : ""} ${props.isSelected ? "card--selected" : ""} ${props.isFocused ? "card--focused" : ""}`}
+      class={`card ${props.disableDrag ? "card__drag-disabled" : ""} ${props.isSelected ? "card--selected" : ""}`}
       onKeyDown={(e) => {
         // Only handle Enter key, let arrow keys bubble up to board-level handler
         if (e.key === "Enter") {

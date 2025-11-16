@@ -10,6 +10,7 @@ import {
   batch,
 } from "solid-js";
 import { Portal } from "solid-js/web";
+import { IconClear } from "@stackoverflow/stacks-icons/icons";
 import ExpandedCard from "./components/expanded-card";
 import { debounce } from "@solid-primitives/scheduled";
 import { api } from "./api";
@@ -55,6 +56,8 @@ function App() {
   const [selectionMode, setSelectionMode] = createSignal(false);
   const [selectedCards, setSelectedCards] = createSignal(new Set());
   const [focusedCardId, setFocusedCardId] = createSignal(null);
+  const [focusedLaneIndex, setFocusedLaneIndex] = createSignal(null);
+  const [hasAutoFocusedFirstCard, setHasAutoFocusedFirstCard] = createSignal(false);
   const [showHelpDialog, setShowHelpDialog] = createSignal(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -345,53 +348,42 @@ function App() {
   }
 
   function moveCardToLane(card, newLane) {
-    // Move card to a different lane (used for keyboard shortcuts)
-    fetch(`${api}/resource${board()}/${encodeURIComponent(card.lane)}/${encodeURIComponent(card.name)}.md`, {
-      method: "PATCH",
-      mode: "cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        newPath: `${board()}/${newLane}/${card.name}.md`,
-      }),
+    // Move card to a different lane (used for keyboard shortcuts) by reusing
+    // the existing handleCardsSortChange logic used by drag-and-drop.
+    const targetLaneCards = cards().filter((c) => c.lane === newLane);
+    const targetIndex = targetLaneCards.length;
+
+    handleCardsSortChange({
+      id: `card-${card.name}`,
+      from: `lane-content-${card.lane}`,
+      to: `lane-content-${newLane}`,
+      index: targetIndex,
     });
 
-    const newCards = structuredClone(cards());
-    const cardIndex = newCards.findIndex((c) => c.name === card.name);
-    if (cardIndex !== -1) {
-      newCards[cardIndex].lane = newLane;
-      setCards(newCards);
-
-      // Keep focus on the moved card
-      setTimeout(() => {
-        document.getElementById(`card-${card.name}`)?.focus();
-      }, 50);
-    }
+    // Keep focus on the moved card
+    setTimeout(() => {
+      document.getElementById(`card-${card.name}`)?.focus();
+    }, 50);
   }
 
   function moveCardInLane(card, direction) {
-    // Move card up or down within its current lane
-    const laneCards = getCardsFromLane(card.lane);
+    // Move card up or down within its current lane by delegating to
+    // handleCardsSortChange so that ordering logic is centralized.
+    const laneCards = cards().filter((c) => c.lane === card.lane);
     const currentIndex = laneCards.findIndex((c) => c.name === card.name);
 
     if (currentIndex === -1) return;
 
-    // Calculate new index
-    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
 
-    // Check bounds
     if (newIndex < 0 || newIndex >= laneCards.length) return;
 
-    // Reorder cards in the lane
-    const reorderedLaneCards = [...laneCards];
-    const [movedCard] = reorderedLaneCards.splice(currentIndex, 1);
-    reorderedLaneCards.splice(newIndex, 0, movedCard);
-
-    // Update all cards with new order
-    const newCards = structuredClone(cards());
-    const otherLaneCards = newCards.filter((c) => c.lane !== card.lane);
-    const allCards = [...otherLaneCards, ...reorderedLaneCards];
-
-    setCards(allCards);
+    handleCardsSortChange({
+      id: `card-${card.name}`,
+      from: `lane-content-${card.lane}`,
+      to: `lane-content-${card.lane}`,
+      index: newIndex,
+    });
 
     // Keep focus on the moved card
     setTimeout(() => {
@@ -822,11 +814,21 @@ function App() {
     const newLanes = JSON.parse(JSON.stringify(lanes())).filter(
       (newLane) => newLane !== lane
     );
-    setLanes([
+    const updatedLanes = [
       ...newLanes.slice(0, changedLane.index),
       lane,
       ...newLanes.slice(changedLane.index),
-    ]);
+    ];
+    setLanes(updatedLanes);
+
+    // If a lane was focused, keep focus on the moved lane by index
+    const newIndex = updatedLanes.findIndex((l) => l === lane);
+    if (newIndex !== -1) {
+      setFocusedLaneIndex(newIndex);
+      setTimeout(() => {
+        document.getElementById(`lane-${lane}`)?.focus();
+      }, 50);
+    }
   }
 
   function handleCardsSortChange(changedCard) {
@@ -857,6 +859,13 @@ function App() {
       return laneCards;
     });
     setCards(newCards);
+
+    // Keep focus on the moved card so keyboard navigation works after
+    // drag-and-drop and keyboard-based moves.
+    setFocusedCardId(cardName);
+    setTimeout(() => {
+      document.getElementById(`card-${cardName}`)?.focus();
+    }, 50);
   }
 
   const disableCardsDrag = createMemo(() => sort() !== "none" || selectionMode());
@@ -874,8 +883,11 @@ function App() {
     }
   });
 
-  // Auto-focus first card on initial load for keyboard navigation
+  // Auto-focus first card once on initial load for keyboard navigation
   createEffect(() => {
+    if (hasAutoFocusedFirstCard()) {
+      return;
+    }
     // Only auto-focus if no card is currently focused and we have cards
     if (!focusedCardId() && !selectedCard() && lanes().length > 0) {
       setTimeout(() => {
@@ -886,6 +898,7 @@ function App() {
           const firstCard = firstLaneCards[0];
           setFocusedCardId(firstCard.name);
           document.getElementById(`card-${firstCard.name}`)?.focus();
+          setHasAutoFocusedFirstCard(true);
         }
       }, 100);
     }
@@ -932,6 +945,16 @@ function App() {
               }
             }
           }
+        } else if (focusedLaneIndex() !== null) {
+          // From a focused lane, move Down to the first card in that lane
+          const laneName = lanes()[focusedLaneIndex()];
+          const laneCards = getCardsFromLane(laneName);
+          if (laneCards.length > 0) {
+            const firstCard = laneCards[0];
+            setFocusedCardId(firstCard.name);
+            setFocusedLaneIndex(null);
+            document.getElementById(`card-${firstCard.name}`)?.focus();
+          }
         } else if (visibleCards.length > 0) {
           // If nothing focused, focus first card
           const firstCard = visibleCards[0];
@@ -958,6 +981,16 @@ function App() {
                 const prevCard = currentLaneCards[currentIndexInLane - 1];
                 setFocusedCardId(prevCard.name);
                 document.getElementById(`card-${prevCard.name}`)?.focus();
+              } else if (currentIndexInLane === 0) {
+                // From the first card in a lane, move focus to the lane itself
+                const laneIndex = lanes().indexOf(currentCard.lane);
+                if (laneIndex !== -1) {
+                  setFocusedCardId(null);
+                  setFocusedLaneIndex(laneIndex);
+                  setTimeout(() => {
+                    document.getElementById(`lane-${currentCard.lane}`)?.focus();
+                  }, 0);
+                }
               }
             }
           }
@@ -996,6 +1029,28 @@ function App() {
               }
             }
           }
+        } else if (focusedLaneIndex() !== null) {
+          const currentLaneIdx = focusedLaneIndex();
+          if (e.altKey) {
+            // Alt+Right: move the lane itself one position to the right
+            if (currentLaneIdx < lanes().length - 1) {
+              const laneName = lanes()[currentLaneIdx];
+              handleLanesSortChange({
+                id: `lane-${laneName}`,
+                index: currentLaneIdx + 1,
+              });
+            }
+          } else {
+            // Normal Right: move lane focus to the next lane
+            if (currentLaneIdx < lanes().length - 1) {
+              const nextLaneName = lanes()[currentLaneIdx + 1];
+              setFocusedLaneIndex(currentLaneIdx + 1);
+              setFocusedCardId(null);
+              setTimeout(() => {
+                document.getElementById(`lane-${nextLaneName}`)?.focus();
+              }, 0);
+            }
+          }
         } else if (visibleCards.length > 0) {
           // If nothing focused, focus first card
           const firstCard = visibleCards[0];
@@ -1029,6 +1084,28 @@ function App() {
                   break;
                 }
               }
+            }
+          }
+        } else if (focusedLaneIndex() !== null) {
+          const currentLaneIdx = focusedLaneIndex();
+          if (e.altKey) {
+            // Alt+Left: move the lane itself one position to the left
+            if (currentLaneIdx > 0) {
+              const laneName = lanes()[currentLaneIdx];
+              handleLanesSortChange({
+                id: `lane-${laneName}`,
+                index: currentLaneIdx - 1,
+              });
+            }
+          } else {
+            // Normal Left: move lane focus to the previous lane
+            if (currentLaneIdx > 0) {
+              const prevLaneName = lanes()[currentLaneIdx - 1];
+              setFocusedLaneIndex(currentLaneIdx - 1);
+              setFocusedCardId(null);
+              setTimeout(() => {
+                document.getElementById(`lane-${prevLaneName}`)?.focus();
+              }, 0);
             }
           }
         } else if (visibleCards.length > 0) {
@@ -1106,6 +1183,7 @@ function App() {
           setShowHelpDialog(false);
         } else {
           setFocusedCardId(null);
+          setFocusedLaneIndex(null);
           mainContainerRef?.focus();
         }
         break;
@@ -1154,8 +1232,16 @@ function App() {
       <DragAndDrop.Provider>
         <DragAndDrop.Container class={`lanes`} onChange={handleLanesSortChange}>
           <For each={lanes()}>
-            {(lane) => (
-              <div class="lane" id={`lane-${lane}`}>
+            {(lane, index) => (
+              <div
+                class="lane"
+                id={`lane-${lane}`}
+                tabIndex={0}
+                onFocus={() => {
+                  setFocusedLaneIndex(index());
+                  setFocusedCardId(null);
+                }}
+              >
                 <header class="lane__header">
                   {laneBeingRenamedName() === lane ? (
                     <NameInput
@@ -1204,8 +1290,10 @@ function App() {
                         onSelectionChange={(isSelected) =>
                           toggleCardSelection(getCardKey(card), isSelected)
                         }
-                        isFocused={focusedCardId() === card.name}
-                        onFocus={() => setFocusedCardId(card.name)}
+                        onFocus={() => {
+                          setFocusedCardId(card.name);
+                          setFocusedLaneIndex(null);
+                        }}
                         onClick={() => {
                           if (!selectionMode()) {
                             let cardUrl = basePath();
@@ -1322,66 +1410,67 @@ function App() {
           >
             <dialog
               open
+              class="help-dialog"
               onClick={(e) => e.stopPropagation()}
-              style={{ "max-width": "400px", "max-height": "80vh" }}
             >
-              <div class="dialog__body" style={{ padding: "20px", gap: "16px", overflow: "auto", "line-height": "1 !important;" }}>
-                <div style={{ display: "flex", "justify-content": "space-between", "align-items": "center", "margin-bottom": "8px" }}>
-                  <h2 style={{ margin: "0", "font-size": "20px", color: "var(--color-foreground)" }}>Keyboard Shortcuts</h2>
+              <div class="dialog__body help-dialog__body">
+                <div class="help-dialog__header">
+                  <h2 class="help-dialog__title">Keyboard Shortcuts</h2>
                   <button
                     type="button"
+                    class="dialog__toolbar-btn help-dialog__close-btn"
                     onClick={() => setShowHelpDialog(false)}
-                    style={{ "font-size": "20px", padding: "2px 8px", background: "transparent", border: "none", cursor: "pointer", color: "var(--color-foreground)" }}
+                    title="Close"
                   >
-                    ×
+                    <span innerHTML={IconClear} />
                   </button>
                 </div>
 
-                <div style={{ display: "flex", "flex-direction": "column", gap: "16px", "margin-left": "auto", "margin-right": "auto" }}>
-                  <div>
-                    <h3 style={{ "margin-top": "0", "margin-bottom": "8px", "font-size": "14px", color: "var(--color-foreground)" }}>Navigation</h3>
-                    <table style={{ width: "100%", "border-collapse": "collapse", "font-size": "13px" }}>
+                <div class="help-dialog__sections">
+                  <div class="help-dialog__section">
+                    <h3 class="help-dialog__section-title">Navigation</h3>
+                    <table class="help-dialog__table">
                       <tbody>
-                        <tr><td style={{ padding: "3px 12px 3px 0", "font-family": "monospace", "white-space": "nowrap", color: "var(--color-foreground)" }}>↑ or k</td><td style={{ padding: "3px 0", color: "var(--color-foreground)" }}>Move focus to card above</td></tr>
-                        <tr><td style={{ padding: "3px 12px 3px 0", "font-family": "monospace", "white-space": "nowrap", color: "var(--color-foreground)" }}>↓ or j</td><td style={{ padding: "3px 0", color: "var(--color-foreground)" }}>Move focus to card below</td></tr>
-                        <tr><td style={{ padding: "3px 12px 3px 0", "font-family": "monospace", "white-space": "nowrap", color: "var(--color-foreground)" }}>← or h</td><td style={{ padding: "3px 0", color: "var(--color-foreground)" }}>Move focus to previous lane</td></tr>
-                        <tr><td style={{ padding: "3px 12px 3px 0", "font-family": "monospace", "white-space": "nowrap", color: "var(--color-foreground)" }}>→ or l</td><td style={{ padding: "3px 0", color: "var(--color-foreground)" }}>Move focus to next lane</td></tr>
-                        <tr><td style={{ padding: "3px 12px 3px 0", "font-family": "monospace", "white-space": "nowrap", color: "var(--color-foreground)" }}>Alt+↑</td><td style={{ padding: "3px 0", color: "var(--color-foreground)" }}>Move card up within lane</td></tr>
-                        <tr><td style={{ padding: "3px 12px 3px 0", "font-family": "monospace", "white-space": "nowrap", color: "var(--color-foreground)" }}>Alt+↓</td><td style={{ padding: "3px 0", color: "var(--color-foreground)" }}>Move card down within lane</td></tr>
-                        <tr><td style={{ padding: "3px 12px 3px 0", "font-family": "monospace", "white-space": "nowrap", color: "var(--color-foreground)" }}>Alt+←</td><td style={{ padding: "3px 0", color: "var(--color-foreground)" }}>Move card to previous lane</td></tr>
-                        <tr><td style={{ padding: "3px 12px 3px 0", "font-family": "monospace", "white-space": "nowrap", color: "var(--color-foreground)" }}>Alt+→</td><td style={{ padding: "3px 0", color: "var(--color-foreground)" }}>Move card to next lane</td></tr>
+                        <tr><td class="help-dialog__key-cell">↑ or k</td><td class="help-dialog__desc-cell">Move focus to card above</td></tr>
+                        <tr><td class="help-dialog__key-cell">↓ or j</td><td class="help-dialog__desc-cell">Move focus to card below</td></tr>
+                        <tr><td class="help-dialog__key-cell">← or h</td><td class="help-dialog__desc-cell">Move focus to previous lane</td></tr>
+                        <tr><td class="help-dialog__key-cell">→ or l</td><td class="help-dialog__desc-cell">Move focus to next lane</td></tr>
+                        <tr><td class="help-dialog__key-cell">Alt+↑</td><td class="help-dialog__desc-cell">Move card up within lane</td></tr>
+                        <tr><td class="help-dialog__key-cell">Alt+↓</td><td class="help-dialog__desc-cell">Move card down within lane</td></tr>
+                        <tr><td class="help-dialog__key-cell">Alt+←</td><td class="help-dialog__desc-cell">Move card to previous lane</td></tr>
+                        <tr><td class="help-dialog__key-cell">Alt+→</td><td class="help-dialog__desc-cell">Move card to next lane</td></tr>
                       </tbody>
                     </table>
                   </div>
 
-                  <div>
-                    <h3 style={{ "margin-top": "0", "margin-bottom": "8px", "font-size": "14px", color: "var(--color-foreground)" }}>Card Actions</h3>
-                    <table style={{ width: "100%", "border-collapse": "collapse", "font-size": "13px" }}>
+                  <div class="help-dialog__section">
+                    <h3 class="help-dialog__section-title">Card Actions</h3>
+                    <table class="help-dialog__table">
                       <tbody>
-                        <tr><td style={{ padding: "3px 12px 3px 0", "font-family": "monospace", "white-space": "nowrap", color: "var(--color-foreground)" }}>Enter or e</td><td style={{ padding: "3px 0", color: "var(--color-foreground)" }}>Open/edit focused card</td></tr>
-                        <tr><td style={{ padding: "3px 12px 3px 0", "font-family": "monospace", "white-space": "nowrap", color: "var(--color-foreground)" }}>n</td><td style={{ padding: "3px 0", color: "var(--color-foreground)" }}>Create new card in current lane</td></tr>
-                        <tr><td style={{ padding: "3px 12px 3px 0", "font-family": "monospace", "white-space": "nowrap", color: "var(--color-foreground)" }}>r</td><td style={{ padding: "3px 0", color: "var(--color-foreground)" }}>Rename focused card</td></tr>
-                        <tr><td style={{ padding: "3px 12px 3px 0", "font-family": "monospace", "white-space": "nowrap", color: "var(--color-foreground)" }}>d</td><td style={{ padding: "3px 0", color: "var(--color-foreground)" }}>Delete focused card (with confirmation)</td></tr>
+                        <tr><td class="help-dialog__key-cell">Enter or e</td><td class="help-dialog__desc-cell">Open/edit focused card</td></tr>
+                        <tr><td class="help-dialog__key-cell">n</td><td class="help-dialog__desc-cell">Create new card in current lane</td></tr>
+                        <tr><td class="help-dialog__key-cell">r</td><td class="help-dialog__desc-cell">Rename focused card</td></tr>
+                        <tr><td class="help-dialog__key-cell">d</td><td class="help-dialog__desc-cell">Delete focused card (with confirmation)</td></tr>
                       </tbody>
                     </table>
                   </div>
 
-                  <div>
-                    <h3 style={{ "margin-top": "0", "margin-bottom": "8px", "font-size": "14px", color: "var(--color-foreground)" }}>General</h3>
-                    <table style={{ width: "100%", "border-collapse": "collapse", "font-size": "13px" }}>
+                  <div class="help-dialog__section">
+                    <h3 class="help-dialog__section-title">General</h3>
+                    <table class="help-dialog__table">
                       <tbody>
-                        <tr><td style={{ padding: "3px 12px 3px 0", "font-family": "monospace", "white-space": "nowrap", color: "var(--color-foreground)" }}>Esc</td><td style={{ padding: "3px 0", color: "var(--color-foreground)" }}>Clear focus / Close dialog</td></tr>
-                        <tr><td style={{ padding: "3px 12px 3px 0", "font-family": "monospace", "white-space": "nowrap", color: "var(--color-foreground)" }}>?</td><td style={{ padding: "3px 0", color: "var(--color-foreground)" }}>Show this help dialog</td></tr>
+                        <tr><td class="help-dialog__key-cell">Esc</td><td class="help-dialog__desc-cell">Clear focus / Close dialog</td></tr>
+                        <tr><td class="help-dialog__key-cell">?</td><td class="help-dialog__desc-cell">Show this help dialog</td></tr>
                       </tbody>
                     </table>
                   </div>
                 </div>
 
-                <div style={{ "text-align": "center", "margin-top": "12px" }}>
+                <div class="help-dialog__footer">
                   <button
                     type="button"
+                    class="help-dialog__ok-btn"
                     onClick={() => setShowHelpDialog(false)}
-                    style={{ padding: "6px 20px" }}
                   >
                     Close
                   </button>

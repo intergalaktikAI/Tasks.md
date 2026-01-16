@@ -10,7 +10,7 @@ import {
 } from "solid-js";
 import ExpandedCard from "./components/expanded-card";
 import { debounce } from "@solid-primitives/scheduled";
-import { api } from "./api";
+import { api, fetchWithAuth } from "./api";
 import { LaneName } from "./components/lane-name";
 import { NameInput } from "./components/name-input";
 import { Header } from "./components/header";
@@ -21,11 +21,19 @@ import { makePersisted } from "@solid-primitives/storage";
 import { DragAndDrop } from "./components/drag-and-drop";
 import { useLocation, useNavigate } from "@solidjs/router";
 import { v7 } from "uuid";
-import { addTagToContent, removeTagFromContent, setDueDateInContent, getTagsFromContent } from "./card-content-utils";
+import { addTagToContent, removeTagFromContent, setDueDateInContent, getTagsFromContent, getOwnerFromContent, setOwnerInContent } from "./card-content-utils";
 import "./stylesheets/index.css";
 import { KeyboardNavigationDialog } from "./components/keyboard-navigation-dialog";
+import { Login } from "./components/login";
+import { FirstLoginModal } from "./components/first-login-modal";
 
 function App() {
+  // Auth state
+  const [user, setUser] = createSignal(null);
+  const [authChecked, setAuthChecked] = createSignal(false);
+  const [userProfile, setUserProfile] = createSignal(null);
+  const [showFirstLoginModal, setShowFirstLoginModal] = createSignal(false);
+
   const [lanes, setLanes] = createSignal([]);
   const [cards, setCards] = createSignal([]);
   const [sort, setSort] = makePersisted(createSignal("none"), {
@@ -112,7 +120,7 @@ function App() {
 
   function fetchTitle() {
     if (!board()) {
-      return fetch(`${api}/title`).then((res) => res.text());
+      return fetchWithAuth(`${api}/title`).then((res) => res.text());
     }
     const boardSplit = board().split("/");
     return decodeURIComponent(boardSplit.at(-1));
@@ -127,11 +135,11 @@ function App() {
   }
 
   async function fetchData() {
-    const resourcesReq = fetch(`${api}/resource${board()}`, {
+    const resourcesReq = fetchWithAuth(`${api}/resource${board()}`, {
       method: "GET",
       mode: "cors",
     }).then((res) => res.json());
-    const tagsReq = fetch(`${api}/tags${board()}`, {
+    const tagsReq = fetchWithAuth(`${api}/tags${board()}`, {
       method: "GET",
       mode: "cors",
     }).then((res) =>
@@ -142,7 +150,7 @@ function App() {
         }))
       )
     );
-    const sortReq = fetch(`${api}/sort${board()}`, {
+    const sortReq = fetchWithAuth(`${api}/sort${board()}`, {
       method: "GET",
     }).then((res) => res.json());
     const [remoteTagOptions, resources, manualSort] = await Promise.all([
@@ -196,6 +204,8 @@ function App() {
         newCard.dueDate = dueDateStringMatch?.length
           ? dueDateStringMatch[1]
           : "";
+        // Extract owner from content
+        newCard.owner = getOwnerFromContent(card.content);
         return newCard;
       })
       .toSorted((a, b) => {
@@ -226,7 +236,7 @@ function App() {
   );
 
   function updateTagColors(mapTagToColor) {
-    return fetch(`${api}/tags${board()}`, {
+    return fetchWithAuth(`${api}/tags${board()}`, {
       method: "PATCH",
       mode: "cors",
       headers: { "Content-Type": "application/json" },
@@ -256,7 +266,7 @@ function App() {
         body: JSON.stringify({ content: newContent }),
       }
     );
-    const remoteTagOptions = await fetch(`${api}/tags${board()}`, {
+    const remoteTagOptions = await fetchWithAuth(`${api}/tags${board()}`, {
       method: "GET",
       mode: "cors",
     }).then((res) =>
@@ -322,13 +332,17 @@ function App() {
     const newCards = structuredClone(cards());
     const newCard = { lane };
     const newCardName = v7();
-    await fetch(`${api}/resource${board()}/${encodeURIComponent(lane)}/${encodeURIComponent(newCardName)}.md`, {
+    // Set owner to current user when creating card
+    const initialContent = user() ? setOwnerInContent("", user().email) : "";
+    await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(lane)}/${encodeURIComponent(newCardName)}.md`, {
       method: "POST",
       mode: "cors",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isFile: true }),
+      body: JSON.stringify({ isFile: true, content: initialContent }),
     });
     newCard.name = newCardName;
+    newCard.content = initialContent;
+    newCard.owner = user()?.email;
     newCard.lastUpdated = new Date().toISOString();
     newCard.createdAt = new Date().toISOString();
     newCards.unshift(newCard);
@@ -338,7 +352,7 @@ function App() {
 
   function deleteCard(card) {
     const newCards = structuredClone(cards());
-    fetch(`${api}/resource${board()}/${encodeURIComponent(card.lane)}/${encodeURIComponent(card.name)}.md`, {
+    fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(card.lane)}/${encodeURIComponent(card.name)}.md`, {
       method: "DELETE",
       mode: "cors",
     });
@@ -395,7 +409,7 @@ function App() {
   async function createNewLane() {
     const newLanes = structuredClone(lanes());
     const newName = v7();
-    await fetch(`${api}/resource${board()}/${encodeURIComponent(newName)}`, {
+    await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(newName)}`, {
       method: "POST",
       mode: "cors",
       headers: { "Content-Type": "application/json" },
@@ -407,7 +421,7 @@ function App() {
   }
 
   function renameLane() {
-    fetch(`${api}/resource${board()}/${encodeURIComponent(laneBeingRenamedName())}`, {
+    fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(laneBeingRenamedName())}`, {
       method: "PATCH",
       mode: "cors",
       headers: { "Content-Type": "application/json" },
@@ -430,7 +444,7 @@ function App() {
   }
 
   function deleteLane(lane) {
-    fetch(`${api}/resource${board()}/${encodeURIComponent(lane)}`, {
+    fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(lane)}`, {
       method: "DELETE",
       mode: "cors",
     });
@@ -494,7 +508,7 @@ function App() {
   function handleDeleteCardsByLane(lane) {
     const cardsToDelete = cards().filter((card) => card.lane === lane);
     for (const card of cardsToDelete) {
-      fetch(`${api}/resource${board()}/${encodeURIComponent(lane)}/${encodeURIComponent(card.name)}.md`, {
+      fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(lane)}/${encodeURIComponent(card.name)}.md`, {
         method: "DELETE",
         mode: "cors",
       });
@@ -544,7 +558,7 @@ function App() {
 
     // Delete all selected cards using existing API
     const deletePromises = cardsToDelete.map((card) =>
-      fetch(`${api}/resource${board()}/${encodeURIComponent(card.lane)}/${encodeURIComponent(card.name)}.md`, {
+      fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(card.lane)}/${encodeURIComponent(card.name)}.md`, {
         method: "DELETE",
         mode: "cors",
       })
@@ -577,7 +591,7 @@ function App() {
 
       const newContent = addTagToContent(content, tagName);
 
-      return fetch(`${api}/resource${board()}/${encodeURIComponent(card.lane)}/${encodeURIComponent(card.name)}.md`, {
+      return fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(card.lane)}/${encodeURIComponent(card.name)}.md`, {
         method: "PATCH",
         mode: "cors",
         headers: { "Content-Type": "application/json" },
@@ -607,7 +621,7 @@ function App() {
 
       const newContent = removeTagFromContent(content, tagName);
 
-      return fetch(`${api}/resource${board()}/${encodeURIComponent(card.lane)}/${encodeURIComponent(card.name)}.md`, {
+      return fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(card.lane)}/${encodeURIComponent(card.name)}.md`, {
         method: "PATCH",
         mode: "cors",
         headers: { "Content-Type": "application/json" },
@@ -630,7 +644,7 @@ function App() {
       const content = card.content || "";
       const newContent = setDueDateInContent(content, dueDate);
 
-      return fetch(`${api}/resource${board()}/${encodeURIComponent(card.lane)}/${encodeURIComponent(card.name)}.md`, {
+      return fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(card.lane)}/${encodeURIComponent(card.name)}.md`, {
         method: "PATCH",
         mode: "cors",
         headers: { "Content-Type": "application/json" },
@@ -648,7 +662,7 @@ function App() {
     const newCardIndex = newCards.findIndex((card) => card.name === oldName);
     const newCard = newCards[newCardIndex];
     const newCardNameWithoutSpaces = newName.trim();
-    fetch(`${api}/resource${board()}/${encodeURIComponent(newCard.lane)}/${encodeURIComponent(newCard.name)}.md`, {
+    fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(newCard.lane)}/${encodeURIComponent(newCard.name)}.md`, {
       method: "PATCH",
       mode: "cors",
       headers: { "Content-Type": "application/json" },
@@ -767,12 +781,34 @@ function App() {
     setCardBeingRenamed(card);
   }
 
-  onMount(() => {
-    const url = window.location.href;
-    if (!url.match(/\/$/)) {
-      window.location.replace(`${url}/`);
+  onMount(async () => {
+    // Check auth status first
+    try {
+      const response = await fetchWithAuth(`${api}/auth/status`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          setUser(data.user);
+        }
+      }
+    } catch (err) {
+      console.error("Auth check failed:", err);
+    } finally {
+      setAuthChecked(true);
     }
-    fetchData();
+
+    // Only proceed if authenticated
+    if (user()) {
+      // Fetch user profile to check for first login
+      await fetchUserProfile();
+      const url = window.location.href;
+      if (!url.match(/\/$/)) {
+        window.location.replace(`${url}/`);
+      }
+      fetchData();
+    }
   });
 
   createEffect(() => {
@@ -797,7 +833,7 @@ function App() {
         [curr]: laneCardNames,
       };
     }, {});
-    fetch(`${api}/sort${board()}`, {
+    fetchWithAuth(`${api}/sort${board()}`, {
       method: "PUT",
       body: JSON.stringify(newSortJson),
       headers: {
@@ -839,7 +875,7 @@ function App() {
     const oldIndex = cards().findIndex((card) => card.name === cardName);
     const card = cards()[oldIndex];
     const newCardLane = changedCard.to.slice("lane-content-".length);
-    fetch(`${api}/resource${board()}/${encodeURIComponent(card.lane)}/${encodeURIComponent(cardName)}.md`, {
+    fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(card.lane)}/${encodeURIComponent(cardName)}.md`, {
       method: "PATCH",
       mode: "cors",
       headers: { "Content-Type": "application/json" },
@@ -1212,6 +1248,99 @@ function App() {
     }
   }
 
+  // Fetch user profile
+  const fetchUserProfile = async () => {
+    try {
+      const response = await fetchWithAuth(`${api}/auth/profile`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const profile = await response.json();
+        setUserProfile(profile);
+        if (profile.firstLogin) {
+          setShowFirstLoginModal(true);
+        }
+      }
+    } catch (err) {
+      console.error("Profile fetch error:", err);
+    }
+  };
+
+  // Handle first login activity selection
+  const handleActivitySelect = async (activity) => {
+    try {
+      const response = await fetchWithAuth(`${api}/auth/profile`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: user().email,
+          chosenActivity: activity.id,
+          activityName: activity.name,
+          requiredCount: activity.count,
+          completedCount: 0,
+          membershipPaid: false,
+        }),
+      });
+      if (response.ok) {
+        const profile = await response.json();
+        setUserProfile(profile);
+        setShowFirstLoginModal(false);
+      }
+    } catch (err) {
+      console.error("Profile update error:", err);
+    }
+  };
+
+  // Handle login
+  const handleLogin = async (userData) => {
+    setUser(userData);
+    // Fetch user profile to check if first login
+    await fetchUserProfile();
+    // Fetch data after login
+    const url = window.location.href;
+    if (!url.match(/\/$/)) {
+      window.location.replace(`${url}/`);
+    }
+    fetchData();
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await fetchWithAuth(`${api}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+    setUser(null);
+    setLanes([]);
+    setCards([]);
+  };
+
+  // Show loading while checking auth
+  if (!authChecked()) {
+    return (
+      <div class="login-container">
+        <div class="login-box">
+          <h1>Loading...</h1>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login if not authenticated
+  if (!user()) {
+    return <Login onLogin={handleLogin} />;
+  }
+
+  // Show first login modal if needed
+  if (showFirstLoginModal()) {
+    return <FirstLoginModal onSelect={handleActivitySelect} />;
+  }
+
   return (
     <div
       ref={(el) => mainContainerRef = el}
@@ -1232,6 +1361,8 @@ function App() {
         onViewModeChange={(e) => setViewMode(e.target.value)}
         selectionMode={selectionMode()}
         onSelectionModeChange={setSelectionMode}
+        user={user()}
+        onLogout={handleLogout}
       />
       <Show when={selectionMode()}>
         <BulkOperationsToolbar
@@ -1301,6 +1432,9 @@ function App() {
                         tags={card.tags}
                         dueDate={card.dueDate}
                         content={card.content}
+                        owner={card.owner}
+                        currentUser={user()}
+                        canEdit={!card.owner || card.owner === user()?.email || user()?.role === "moderator"}
                         disableDrag={disableCardsDrag()}
                         selectionMode={selectionMode()}
                         isSelected={selectedCards().has(getCardKey(card))}
@@ -1359,6 +1493,8 @@ function App() {
                             <CardName
                               name={card.name}
                               hasContent={!!card.content}
+                              owner={card.owner}
+                              canEdit={!card.owner || card.owner === user()?.email || user()?.role === "moderator"}
                               onRenameBtnClick={() => startRenamingCard(card)}
                               onDelete={() => deleteCard(card)}
                               onClick={() =>
@@ -1386,6 +1522,8 @@ function App() {
             content={selectedCard().content}
             tags={selectedCard().tags || []}
             tagsOptions={tagsOptions()}
+            owner={selectedCard().owner}
+            canEdit={!selectedCard().owner || selectedCard().owner === user()?.email || user()?.role === "moderator"}
             onClose={() => {
               const cardName = selectedCard().name;
               navigate(`${basePath()}${board()}` || "/");

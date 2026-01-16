@@ -39,7 +39,10 @@ npx @biomejs/biome check --write  # Auto-fix issues
 - **Cards**: Markdown files within lane directories
 - **Tags**: Inline markers `[tag:TagName]` in card content; colors stored in `CONFIG_DIR/tags.json`
 - **Due dates**: Inline markers `[due:YYYY-MM-DD]` in card content
+- **Owners**: Inline markers `[owner:email@example.com]` in card content
 - **Sort order**: `CONFIG_DIR/sort.json` stores manual ordering per lane
+- **Users**: `CONFIG_DIR/users.md` stores credentials in markdown table format
+- **Profiles**: `CONFIG_DIR/profiles/*.json` stores user activity choices
 
 ### Backend Endpoints (`/backend/server.js`)
 | Method | Endpoint | Purpose |
@@ -48,16 +51,37 @@ npx @biomejs/biome check --write  # Auto-fix issues
 | GET/PATCH | `/tags/:path*` | Tag color management |
 | GET/PUT | `/sort/:path*` | Manual sort order |
 | POST | `/image` | Image upload (base64, returns UUID filename) |
+| POST | `/auth/login` | User authentication |
+| POST | `/auth/logout` | End session |
+| GET | `/auth/status` | Check authentication status |
+| GET/PATCH | `/auth/profile` | User profile (activity choice, progress) |
+| GET | `/auth/profiles` | All user profiles (for moderators) |
 
 ### Frontend State (`/frontend/src/App.jsx`)
 Main component manages all state using SolidJS signals. Key state:
 - `lanes()`, `tagsOptions()` - data from API
 - `sort()`, `sortDirection()`, `viewMode()` - persisted to localStorage
 - `focusedCardId()`, `focusedLaneIndex()` - keyboard navigation tracking
+- `user()`, `authChecked()` - authentication state
+- `userProfile()`, `showFirstLoginModal()` - membership task state
 
 ### Key Utilities
-- `frontend/src/card-content-utils.js`: Tag/due-date extraction and manipulation via regex
-- `frontend/src/api.js`: API base path configuration (handles dev vs prod)
+- `frontend/src/card-content-utils.js`: Tag/due-date/owner extraction and manipulation via regex
+- `frontend/src/api.js`: API base path configuration and `fetchWithAuth()` wrapper
+- `backend/auth.js`: Password hashing, session management, user file parsing
+
+### Authentication System
+- Sessions stored in-memory with 7-day expiry
+- Cookies used for session IDs (`httpOnly`, `sameSite: lax`)
+- All API routes protected by auth middleware (except `/auth/login`, `/auth/status`)
+- User roles: `member` (default), `moderator`
+
+### Adding Users
+```bash
+cd backend
+node add-user.js <email> <password> [role]
+# Example: node add-user.js admin@example.com secret moderator
+```
 
 ### Keyboard Navigation
 Vim-style (`hjkl`) and arrow key navigation implemented in `App.jsx`. Help dialog in `keyboard-navigation-dialog.jsx`.

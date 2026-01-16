@@ -98,3 +98,43 @@ export function getDueDateFromContent(content) {
   }
   return dueDateStringMatch[1];
 }
+
+/**
+ * Extract owner from card content
+ * @param {string} content - Card content
+ * @returns {string|null} Owner email or null if not found
+ */
+export function getOwnerFromContent(content) {
+  if (!content) {
+    return null;
+  }
+  const ownerMatch = content.match(/\[owner:(.*?)\]/);
+  if (!ownerMatch?.length) {
+    return null;
+  }
+  return ownerMatch[1];
+}
+
+/**
+ * Set owner in card content
+ * @param {string} content - Current card content
+ * @param {string} ownerEmail - Owner email to set
+ * @returns {string} Updated content with owner set
+ */
+export function setOwnerInContent(content, ownerEmail) {
+  const currentContent = content || "";
+
+  // Check if card already has an owner
+  const ownerMatch = currentContent.match(/\[owner:(.*?)\]/);
+  const existingOwner = ownerMatch?.[1];
+
+  const newOwnerTag = `[owner:${ownerEmail}]`;
+
+  if (existingOwner) {
+    // Replace existing owner
+    return currentContent.replace(`[owner:${existingOwner}]`, newOwnerTag);
+  } else {
+    // Add new owner at the beginning
+    return `${newOwnerTag}\n${currentContent}`;
+  }
+}

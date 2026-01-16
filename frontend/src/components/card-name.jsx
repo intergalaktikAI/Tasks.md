@@ -11,10 +11,15 @@ import { IconEllipsisVertical } from '@stackoverflow/stacks-icons/icons'
  * @param {boolean} props.hasContent
  * @param {Function} props.onRenameBtnClick
  * @param {Function} props.onDelete
+ * @param {string} props.owner
+ * @param {boolean} props.canEdit
  */
 export function CardName(props) {
 	const [showMenu, setShowMenu] = createSignal(false);
 	const [menuCoordinates, setMenuCoordinates] = createSignal();
+
+	// Don't show menu if user can't edit
+	const canShowMenu = () => props.canEdit !== false;
 
 	function startRenamingCard() {
 		setShowMenu(false);
@@ -54,24 +59,26 @@ export function CardName(props) {
 				{props.hasContent ? "\uD83D\uDCDD " : ""}
 				{props.name}
 			</div>
-			<div class="header-buttons">
-				<button
-					type="button"
-					title="Show card options"
-					class="small"
-					popoverTarget={`${props.name}-card-options`}
-					onClick={handleClickCardOptions}
-					onKeyDown={(e) =>
-						handleKeyDown(
-							e,
-							() => handleClickCardOptions(e, true),
-							handleCancel,
-						)
-					}
-				>
-					<span innerHTML={IconEllipsisVertical} />
-				</button>
-			</div>
+			{canShowMenu() && (
+				<div class="header-buttons">
+					<button
+						type="button"
+						title="Show card options"
+						class="small"
+						popoverTarget={`${props.name}-card-options`}
+						onClick={handleClickCardOptions}
+						onKeyDown={(e) =>
+							handleKeyDown(
+								e,
+								() => handleClickCardOptions(e, true),
+								handleCancel,
+							)
+						}
+					>
+						<span innerHTML={IconEllipsisVertical} />
+					</button>
+				</div>
+			)}
 			{showMenu() ? (
 				<Portal>
 					<Menu

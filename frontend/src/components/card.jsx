@@ -1,4 +1,4 @@
-import { createMemo } from "solid-js";
+import { createMemo, For } from "solid-js";
 import { handleKeyDown } from "../utils";
 
 /**
@@ -14,6 +14,9 @@ import { handleKeyDown } from "../utils";
  * @param {boolean} props.isSelected
  * @param {Function} props.onSelectionChange
  * @param {Function} props.onFocus
+ * @param {string} props.owner
+ * @param {Object} props.currentUser
+ * @param {boolean} props.canEdit
  */
 export function Card(props) {
 
@@ -101,6 +104,11 @@ export function Card(props) {
         </For>
       </ul>
       <h5 class="card__content">{props.content}</h5>
+      {props.owner && (
+        <h5 class={`card__owner ${props.owner === props.currentUser?.email ? "card__owner--self" : ""}`}>
+          {props.owner}
+        </h5>
+      )}
       <h5 class={`card__due-date ${dueDateStatusClass()}`}>{dueDateFormatted()}</h5>
     </div>
   );

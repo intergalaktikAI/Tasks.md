@@ -7,6 +7,7 @@ const cors = require("@koa/cors");
 const multer = require("@koa/multer");
 const mount = require("koa-mount");
 const serve = require("koa-static");
+const auth = require("./auth");
 
 const router = new Router();
 
@@ -237,7 +238,160 @@ async function getSort(ctx) {
 
 router.get("/sort/:path*", getSort);
 
-app.use(cors());
+// Authentication routes
+async function login(ctx) {
+  const { email, password } = ctx.request.body;
+  if (!email || !password) {
+    ctx.status = 400;
+    ctx.body = { error: "Email and password required" };
+    return;
+  }
+
+  const user = await auth.authenticateUser(CONFIG_DIR, email, password);
+  if (!user) {
+    ctx.status = 401;
+    ctx.body = { error: "Invalid credentials" };
+    return;
+  }
+
+  const sessionId = auth.createSession(user);
+  ctx.cookies.set("session", sessionId, {
+    httpOnly: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    sameSite: "lax",
+  });
+
+  ctx.status = 200;
+  ctx.body = { user };
+}
+
+router.post("/auth/login", login);
+
+async function logout(ctx) {
+  const sessionId = ctx.cookies.get("session");
+  if (sessionId) {
+    auth.deleteSession(sessionId);
+  }
+  ctx.cookies.set("session", null);
+  ctx.status = 200;
+  ctx.body = { message: "Logged out" };
+}
+
+router.post("/auth/logout", logout);
+
+async function getAuthStatus(ctx) {
+  const sessionId = ctx.cookies.get("session");
+  if (sessionId) {
+    const session = auth.getSession(sessionId);
+    if (session) {
+      ctx.status = 200;
+      ctx.body = { user: session.user };
+      return;
+    }
+  }
+  ctx.status = 200;
+  ctx.body = { user: null };
+}
+
+router.get("/auth/status", getAuthStatus);
+
+// User profile management (for membership tasks)
+async function getUserProfile(ctx) {
+  const sessionId = ctx.cookies.get("session");
+  if (!sessionId) {
+    ctx.status = 401;
+    ctx.body = { error: "Unauthorized" };
+    return;
+  }
+  const session = auth.getSession(sessionId);
+  if (!session) {
+    ctx.status = 401;
+    ctx.body = { error: "Unauthorized" };
+    return;
+  }
+
+  const profilePath = `${CONFIG_DIR}/profiles/${session.user.email.replace(/[^a-zA-Z0-9]/g, "_")}.json`;
+  try {
+    const profile = await fs.promises.readFile(profilePath, "utf-8");
+    ctx.body = JSON.parse(profile);
+  } catch (err) {
+    // No profile yet - first login
+    ctx.body = { firstLogin: true };
+  }
+  ctx.status = 200;
+}
+
+router.get("/auth/profile", getUserProfile);
+
+async function updateUserProfile(ctx) {
+  const sessionId = ctx.cookies.get("session");
+  if (!sessionId) {
+    ctx.status = 401;
+    ctx.body = { error: "Unauthorized" };
+    return;
+  }
+  const session = auth.getSession(sessionId);
+  if (!session) {
+    ctx.status = 401;
+    ctx.body = { error: "Unauthorized" };
+    return;
+  }
+
+  await fs.promises.mkdir(`${CONFIG_DIR}/profiles`, { recursive: true });
+  const profilePath = `${CONFIG_DIR}/profiles/${session.user.email.replace(/[^a-zA-Z0-9]/g, "_")}.json`;
+
+  // Merge with existing profile
+  let existingProfile = {};
+  try {
+    existingProfile = JSON.parse(await fs.promises.readFile(profilePath, "utf-8"));
+  } catch (err) {
+    // No existing profile
+  }
+
+  const newProfile = { ...existingProfile, ...ctx.request.body, firstLogin: false };
+  await fs.promises.writeFile(profilePath, JSON.stringify(newProfile, null, 2));
+
+  if (PUID && PGID) {
+    await fs.promises.chown(profilePath, PUID, PGID);
+  }
+
+  ctx.body = newProfile;
+  ctx.status = 200;
+}
+
+router.patch("/auth/profile", updateUserProfile);
+
+// Get all user profiles (for moderators to see everyone's progress)
+async function getAllProfiles(ctx) {
+  const sessionId = ctx.cookies.get("session");
+  if (!sessionId) {
+    ctx.status = 401;
+    ctx.body = { error: "Unauthorized" };
+    return;
+  }
+
+  try {
+    const profilesDir = `${CONFIG_DIR}/profiles`;
+    await fs.promises.mkdir(profilesDir, { recursive: true });
+    const files = await fs.promises.readdir(profilesDir);
+    const profiles = await Promise.all(
+      files
+        .filter((f) => f.endsWith(".json"))
+        .map(async (f) => {
+          const content = await fs.promises.readFile(`${profilesDir}/${f}`, "utf-8");
+          return JSON.parse(content);
+        })
+    );
+    ctx.body = profiles;
+  } catch (err) {
+    ctx.body = [];
+  }
+  ctx.status = 200;
+}
+
+router.get("/auth/profiles", getAllProfiles);
+
+app.use(cors({ credentials: true }));
 app.use(bodyParser());
 
 const httpInstance = new Koa();
@@ -250,6 +404,7 @@ httpInstance.use(async (ctx, next) => {
     throw err;
   }
 });
+httpInstance.use(auth.authMiddleware(CONFIG_DIR));
 
 app.use(
   mount(`${BASE_PATH}/_api`, httpInstance)

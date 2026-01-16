@@ -11,7 +11,11 @@ A self-hosted, Markdown file based task management board.
 - Light and dark themes synced with operating system settings;
 - Heavily customizable with 3 default color themes ([Adwaita](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/named-colors.html), [Nord](https://www.nordtheme.com/) and [Catppuccin](https://github.com/catppuccin/catppuccin));
 - Support for subpath based reverse-proxy with an environment variable for base path;
-- Can be installed as PWA.
+- Can be installed as PWA;
+- **Multi-user authentication** with email/password login;
+- **Card ownership** - users can only edit their own cards;
+- **Moderator role** - moderators can edit any user's cards;
+- **Membership task system** - first-login activity selection for NGO/club management.
 
 ## Upgrade from 2.X.X to 3.X.X
 If you're running a docker container with version 2 of Tasks.md and want to upgrade it to version 3, please follow up [those instructions](/migration-guide.md) as it requires some tweeks for it to work properly.
@@ -95,6 +99,41 @@ The way directories and files are organized in Tasks.md is quite simple. Every l
 Sub-directories can also be opened as their own projects. In this example, by opening the app under `/backlog` path it will treat this directory as a different project, with its own lanes and tasks.
 
 More details (and it how it looks within Obsidian) can be found [here](https://github.com/BaldissaraMatheus/Tasks.md/issues/49).
+
+## 👥 User Management
+
+### Adding Users
+Use the CLI tool to add users:
+```bash
+cd backend
+node add-user.js <email> <password> [role]
+```
+
+Roles:
+- `member` (default) - can only edit their own cards
+- `moderator` - can edit any user's cards
+
+Example:
+```bash
+node add-user.js admin@example.com secretpass moderator
+node add-user.js user@example.com userpass member
+```
+
+Users are stored in `config/users.md` with hashed passwords.
+
+### Card Ownership
+- When a user creates a card, they become the owner
+- Owners are stored as `[owner:email@example.com]` in the card content
+- Users can only edit/delete cards they own
+- Moderators can edit any card
+
+### First Login Activity Selection
+On first login, users choose a membership activity:
+- **Open Radiona** (10 times)
+- **Organise Meetup** (2 times)
+- **Create Art Work** (1 time)
+
+User profiles are stored in `config/profiles/`.
 
 ## 💻 Technology stack
 With the goal of having a good mix of performance and maintainability, the application was built with [SolidJS](https://github.com/solidjs/solid) and [Koa](https://github.com/koajs/koa). It also uses [Stacks-Editor](https://github.com/StackExchange/Stacks-Editor) for text editing and [serve-static](https://github.com/expressjs/serve-static) to serve the css files as-is.

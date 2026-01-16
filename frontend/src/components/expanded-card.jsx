@@ -5,7 +5,7 @@ import {
   createMemo,
   onCleanup,
 } from "solid-js";
-import { api } from "../api";
+import { api, fetchWithAuth } from "../api";
 import { Menu } from "./menu";
 import { handleKeyDown, clickOutside } from "../utils";
 import { makePersisted } from "@solid-primitives/storage";
@@ -30,6 +30,8 @@ import { addTagToContent, removeTagFromContent, setDueDateInContent, getDueDateF
  * @param {Function} props.onTagColorChange Callback function for when the color of a tag is changed
  * @param {Function} props.onNameChange Callback function for when the name of the card is changed
  * @param {Function} props.getNameErrorMsg Callback function to validate new card name
+ * @param {string} props.owner Card owner email
+ * @param {boolean} props.canEdit Whether user can edit this card
  */
 function ExpandedCard(props) {
   const [isCardBeingRenamed, setIsCardBeingRenamed] = createSignal(false);
@@ -138,7 +140,7 @@ function ExpandedCard(props) {
   function uploadImage(file) {
     const formData = new FormData();
     formData.set("file", file);
-    return fetch(`${api}/image`, {
+    return fetchWithAuth(`${api}/image`, {
       method: "POST",
       mode: "cors",
       body: formData,
@@ -356,7 +358,7 @@ function ExpandedCard(props) {
             <header class="dialog__toolbar">
               <div class="dialog__toolbar-name">
                 <h1>
-                  {isCardBeingRenamed() ? (
+                  {isCardBeingRenamed() && props.canEdit !== false ? (
                     <NameInput
                       value={newCardName()}
                       errorMsg={props.getNameErrorMsg(newCardName())}
@@ -366,11 +368,11 @@ function ExpandedCard(props) {
                     />
                   ) : (
                     <div
-                      role="button"
-                      onClick={startRenamingCard}
-                      onKeyDown={(e) => handleKeyDown(e, startRenamingCard)}
-                      title="Click to rename card"
-                      tabIndex="0"
+                      role={props.canEdit !== false ? "button" : undefined}
+                      onClick={props.canEdit !== false ? startRenamingCard : undefined}
+                      onKeyDown={props.canEdit !== false ? (e) => handleKeyDown(e, startRenamingCard) : undefined}
+                      title={props.canEdit !== false ? "Click to rename card" : `Owned by ${props.owner}`}
+                      tabIndex={props.canEdit !== false ? "0" : undefined}
                     >
                       {props.name || "NO NAME"}
                     </div>
@@ -417,9 +419,11 @@ function ExpandedCard(props) {
                     }
                   />
                 ) : (
-                  <button type="button" onClick={handleAddTagBtnOnClick}>
-                    Add tag
-                  </button>
+                  props.canEdit !== false && (
+                    <button type="button" onClick={handleAddTagBtnOnClick}>
+                      Add tag
+                    </button>
+                  )
                 )}
                 <For each={props.tags || []}>
                   {(tag) => (
@@ -448,8 +452,14 @@ function ExpandedCard(props) {
                   type="date"
                   value={dueDate()}
                   onChange={handleChangeDueDate}
+                  disabled={props.canEdit === false}
                 ></input>
               </div>
+              {props.canEdit === false && props.owner && (
+                <div class="dialog__read-only-notice">
+                  Read-only (owned by {props.owner})
+                </div>
+              )}
             </div>
             <div class="dialog__content">
               <style>{stacksEditorStyle}</style>

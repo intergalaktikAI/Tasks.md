@@ -5,3 +5,11 @@ if (basePath.endsWith('/')) {
 	basePath = basePath.substring(0, basePath.length - 1);
 }
 export const api = `${basePath}/_api`;
+
+// Wrapper for fetch that includes credentials
+export function fetchWithAuth(url, options = {}) {
+	return fetch(url, {
+		...options,
+		credentials: "include",
+	});
+}

@@ -14,6 +14,8 @@ import { createEffect, createMemo, createSignal, onMount, For } from "solid-js";
  * @param {Function} props.onViewModeChange
  * @param {boolean} props.selectionMode
  * @param {Function} props.onSelectionModeChange
+ * @param {Object} props.user
+ * @param {Function} props.onLogout
  */
 export function Header(props) {
   const filterSelect = createMemo(() => {
@@ -77,13 +79,21 @@ export function Header(props) {
       >
         New lane
       </button>
-      <button 
-        type="button" 
+      <button
+        type="button"
         onClick={() => props.onSelectionModeChange?.(!props.selectionMode)}
         class={props.selectionMode ? "button--active" : ""}
       >
         {props.selectionMode ? "Exit selection" : "Select cards"}
       </button>
+      {props.user && (
+        <div class="user-info">
+          <span class="user-info__email">{props.user.email}</span>
+          <button class="user-info__logout" onClick={props.onLogout}>
+            Logout
+          </button>
+        </div>
+      )}
     </header>
   );
 }

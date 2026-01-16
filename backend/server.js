@@ -391,7 +391,13 @@ async function getAllProfiles(ctx) {
 
 router.get("/auth/profiles", getAllProfiles);
 
-app.use(cors({ credentials: true }));
+app.use(cors({
+  credentials: true,
+  origin: (ctx) => {
+    // Allow any origin for same-host requests, or reflect the origin for CORS
+    return ctx.get('Origin') || '*';
+  }
+}));
 app.use(bodyParser());
 
 const httpInstance = new Koa();
@@ -499,4 +505,4 @@ fs.promises.mkdir(CONFIG_DIR, { recursive: true });
 if (PUID && PGID) {
   fs.promises.chown(CONFIG_DIR, PUID, PGID);
 }
-app.listen(PORT);
+app.listen(PORT, '0.0.0.0');

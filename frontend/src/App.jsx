@@ -1268,9 +1268,44 @@ function App() {
     }
   };
 
-  // Handle first login activity selection
+  // Handle first login activity selection - creates actual task cards
   const handleActivitySelect = async (activity) => {
     try {
+      const membershipLane = "Membership";
+      const currentLanes = lanes();
+
+      // Create Membership lane if it doesn't exist
+      if (!currentLanes.includes(membershipLane)) {
+        await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(membershipLane)}`, {
+          method: "POST",
+          mode: "cors",
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Create the selected activity task card (avoid special chars in filename)
+      const activityTaskName = `${activity.name} - ${activity.count}x required`;
+      const activityContent = `# ${activity.name}\n\n${activity.description}\n\n**Progress:** 0 / ${activity.count} completed\n\n[owner:${user().email}]\n[tag:Membership]`;
+
+      await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(membershipLane)}/${encodeURIComponent(activityTaskName)}.md`, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isFile: true, content: activityContent }),
+      });
+
+      // Create Pay Membership task card
+      const payTaskName = "Pay Membership Fee";
+      const payContent = `# Pay Membership Fee\n\nAnnual membership fee payment required.\n\n**Status:** Pending\n\n[owner:${user().email}]\n[tag:Membership]\n[tag:Payment]`;
+
+      await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(membershipLane)}/${encodeURIComponent(payTaskName)}.md`, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isFile: true, content: payContent }),
+      });
+
+      // Save profile with chosen activity
       const response = await fetchWithAuth(`${api}/auth/profile`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -1284,10 +1319,13 @@ function App() {
           membershipPaid: false,
         }),
       });
+
       if (response.ok) {
         const profile = await response.json();
         setUserProfile(profile);
         setShowFirstLoginModal(false);
+        // Refresh data to show new tasks
+        fetchData();
       }
     } catch (err) {
       console.error("Profile update error:", err);

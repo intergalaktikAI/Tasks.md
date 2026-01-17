@@ -1,7 +1,7 @@
 # ![logo](public/logo.png) Tasks.md
 A self-hosted, Markdown file based task management board.
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)](CHANGELOG.md)
 
 
 ![Demo](./public/demo.gif)

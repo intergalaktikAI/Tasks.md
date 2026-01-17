@@ -20,26 +20,34 @@
 
 ### 2. Radiona NGO Membership Tasks ✅
 
-**Status:** COMPLETED (v1.0.0)
+**Status:** COMPLETED (v1.0.1)
 
 **Description:** This board serves as a task wall for Radiona NGO members. Each member has required tasks to complete for their membership.
 
 **Implemented:**
 
-#### 2.2 First Login - Choose Membership Activity
+#### 2.1 Mandatory Task: "Pay Membership" ✅
+- "Pay Membership Fee" task is automatically created when member selects their activity
+- Task is created in "Membership" lane with [owner] and [tag:Payment] markers
+
+#### 2.2 First Login - Choose Membership Activity ✅
 On first login, each member must choose ONE of these three options:
 
 | Option | Task Name | Times Required | Status |
 |--------|-----------|----------------|--------|
-| A | Open Radiona | 10 | ✅ Implemented |
-| B | Organise Meetup | 2 | ✅ Implemented |
-| C | Create Art Work | 1 | ✅ Implemented |
+| A | Open Radiona | 10 | ✅ Creates task card |
+| B | Organise Meetup | 2 | ✅ Creates task card |
+| C | Create Art Work | 1 | ✅ Creates task card |
 
 **User Flow:** ✅ All implemented
 1. New member logs in for the first time
-2. System presents the 3 options (A, B, or C)
-3. Member selects their preferred activity
-4. User profiles stored in `config/profiles/`
+2. System presents the 3 selectable options (A, B, or C)
+3. Member clicks to select their preferred activity
+4. **On selection, actual task cards are created:**
+   - Selected activity task in "Membership" lane (e.g., "Open Radiona (0/10)")
+   - "Pay Membership Fee" task in "Membership" lane
+5. User profiles stored in `config/profiles/`
+6. Board refreshes to show new tasks
 
 ---
 
@@ -50,10 +58,11 @@ On first login, each member must choose ONE of these three options:
 **Description:** All members see the same board showing everyone's tasks, but can only modify their own.
 
 **Implemented:**
-- All logged-in users see all tasks on the board
+- **All logged-in users see ALL tasks from ALL users** (shared board)
 - Each task shows owner via `[owner:email@example.com]` marker
 - Users can only edit/delete their own tasks
-- Other members' tasks have disabled edit controls
+- Other members' tasks are visible but have disabled edit controls (read-only)
+- Tasks are stored as .md files in shared directories
 
 ---
 
@@ -83,9 +92,10 @@ On first login, each member must choose ONE of these three options:
 
 ## Pending Features
 
-### 2.1 Mandatory Task: "Pay Membership"
-- Every member sees a "Pay membership" task when they log in
-- This task resets yearly (or per membership period)
+### Progress Tracking
+- Track completion count per user (increment when task is marked done)
+- Show progress indicator on task cards (e.g., "3/10 completed")
+- Consider yearly reset for recurring tasks
 
 **Status:** Not yet implemented
 

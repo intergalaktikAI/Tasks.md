@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2026-01-17
+
+### Added
+- **Task card creation on activity selection:** When user selects a membership activity, actual task cards are now created:
+  - Selected activity task (e.g., "Open Radiona - 10x required")
+  - "Pay Membership Fee" task
+- Tasks are created in a "Membership" lane (auto-created if not exists)
+- Tasks include `[owner:email]` and `[tag:Membership]` markers
+
+### Fixed
+- Activity selection now creates real task cards instead of just saving to profile
+- Fixed task filename with parentheses causing 404 errors
+
 ## [1.0.0] - 2026-01-17
 
 ### Added

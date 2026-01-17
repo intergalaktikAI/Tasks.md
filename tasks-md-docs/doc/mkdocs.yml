@@ -1,0 +1,64 @@
+site_name: Tasks.md Documentation
+site_description: User documentation for Tasks.md - A self-hosted, Markdown file-based task management board
+site_author: Radiona
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - tables
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Configuration: getting-started/configuration.md
+    - Adding Users: getting-started/adding-users.md
+  - User Guide:
+    - Login & Authentication: user-guide/authentication.md
+    - Board Overview: user-guide/board-overview.md
+    - Managing Cards: user-guide/managing-cards.md
+    - Tags & Due Dates: user-guide/tags-due-dates.md
+    - Keyboard Shortcuts: user-guide/keyboard-shortcuts.md
+  - Radiona Features:
+    - Activity Selection: radiona/activity-selection.md
+    - Progress Tracking: radiona/progress-tracking.md
+    - Reset Selection: radiona/reset-selection.md
+  - Administration:
+    - User Management: admin/user-management.md
+    - Roles & Permissions: admin/roles-permissions.md
+    - Deployment: admin/deployment.md
+  - Reference:
+    - API Endpoints: reference/api.md
+    - Environment Variables: reference/environment.md

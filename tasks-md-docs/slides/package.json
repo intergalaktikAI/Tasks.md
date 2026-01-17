@@ -1,0 +1,19 @@
+{
+  "name": "tasks-md-presentation",
+  "version": "1.0.0",
+  "description": "Business pitch presentation for Tasks.md - Membership Management Made Simple",
+  "scripts": {
+    "dev": "slidev",
+    "build": "slidev build",
+    "export": "slidev export",
+    "export-pdf": "slidev export --format pdf"
+  },
+  "dependencies": {
+    "@slidev/cli": "^0.48.0",
+    "@slidev/theme-default": "latest",
+    "@slidev/theme-seriph": "latest"
+  },
+  "devDependencies": {
+    "playwright-chromium": "^1.40.0"
+  }
+}

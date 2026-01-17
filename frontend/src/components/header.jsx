@@ -16,6 +16,8 @@ import { createEffect, createMemo, createSignal, onMount, For } from "solid-js";
  * @param {Function} props.onSelectionModeChange
  * @param {Object} props.user
  * @param {Function} props.onLogout
+ * @param {Object} props.userProfile
+ * @param {Function} props.onResetActivity
  */
 export function Header(props) {
   const filterSelect = createMemo(() => {
@@ -89,6 +91,11 @@ export function Header(props) {
       {props.user && (
         <div class="user-info">
           <span class="user-info__email">{props.user.email}</span>
+          {props.userProfile && props.userProfile.chosenActivity && (
+            <button class="user-info__reset" onClick={props.onResetActivity}>
+              Reset Selection
+            </button>
+          )}
           <button class="user-info__logout" onClick={props.onLogout}>
             Logout
           </button>

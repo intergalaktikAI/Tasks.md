@@ -90,6 +90,24 @@ On first login, each member must choose ONE of these three options:
 
 ---
 
+### 5. Reset Activity Selection ✅
+
+**Status:** COMPLETED (v1.0.2)
+
+**Description:** Allow logged-in members who have already selected their activity to reset their selection and return to the first-login activity selection modal.
+
+**Implemented:**
+- "Reset Selection" button visible to logged-in users who have already chosen an activity
+- Clicking the button shows a confirmation dialog
+- On confirmation:
+  - Delete existing membership task cards created for this user
+  - Reset user profile to show first-login modal again
+  - User can select a new activity
+
+**Use Case:** Member wants to change from "Open Radiona" to "Create Art Work" activity.
+
+---
+
 ## Pending Features
 
 ### Progress Tracking

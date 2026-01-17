@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2026-01-17
+
+### Added
+- **Reset Activity Selection:** Members can now reset their activity selection and choose a new membership activity
+  - "Reset Selection" button appears in the header next to logout (only for users who have already selected)
+  - Shows confirmation dialog before resetting
+  - Deletes existing membership task cards created for this user
+  - Returns user to the first-login activity selection modal
+
+### Technical
+- Added `handleResetActivity` function in App.jsx
+- Added `userProfile` and `onResetActivity` props to Header component
+- Added CSS styling for `.user-info__reset` button
+
 ## [1.0.1] - 2026-01-17
 
 ### Added

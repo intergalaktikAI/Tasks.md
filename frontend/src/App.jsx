@@ -1360,6 +1360,56 @@ function App() {
     setCards([]);
   };
 
+  // Handle reset activity selection - allows user to choose a new activity
+  const handleResetActivity = async () => {
+    if (!confirm("Reset your activity selection? This will delete your current membership tasks and let you choose a new activity.")) {
+      return;
+    }
+
+    try {
+      const userEmail = user().email;
+      const membershipLane = "Membership";
+
+      // Find and delete user's membership task cards
+      const userMembershipCards = cards().filter(
+        (card) => card.lane === membershipLane && card.owner === userEmail
+      );
+
+      for (const card of userMembershipCards) {
+        await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(membershipLane)}/${encodeURIComponent(card.name)}.md`, {
+          method: "DELETE",
+          mode: "cors",
+        });
+      }
+
+      // Reset profile to show first login modal
+      const response = await fetchWithAuth(`${api}/auth/profile`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: userEmail,
+          chosenActivity: null,
+          activityName: null,
+          requiredCount: null,
+          completedCount: 0,
+          membershipPaid: false,
+          firstLogin: true,
+        }),
+      });
+
+      if (response.ok) {
+        const profile = await response.json();
+        setUserProfile(profile);
+        setShowFirstLoginModal(true);
+        // Refresh data to remove deleted tasks
+        fetchData();
+      }
+    } catch (err) {
+      console.error("Reset activity error:", err);
+    }
+  };
+
   // Use Switch/Match for proper SolidJS reactivity (early returns don't work with signals)
   return (
     <Switch>
@@ -1398,6 +1448,8 @@ function App() {
         onSelectionModeChange={setSelectionMode}
         user={user()}
         onLogout={handleLogout}
+        userProfile={userProfile()}
+        onResetActivity={handleResetActivity}
       />
       <Show when={selectionMode()}>
         <BulkOperationsToolbar

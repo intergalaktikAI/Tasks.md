@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.5] - 2026-01-17
+
+### Fixed
+- **Login Button Styling:** Reduced button size and centered text
+  - Changed padding from 1.25rem to 0.75rem
+  - Added flexbox centering for text alignment
+  - Removed pulsing animation for cleaner appearance
+
+## [1.0.4] - 2026-01-17
+
+### Added
+- **User-Named Lanes:** Lane created on first login is named after the user (e.g., "John's Tasks")
+- **Simplified Header for Members:** Sort/filter/view mode controls hidden for regular members (moderators only)
+- **Enhanced Activity Selection Feedback:**
+  - Bright green border on selected option
+  - Large checkmark badge (48px) with shadow
+  - Scale animation on selection
+
+### Fixed
+- **Login Button Visibility:** Made button prominent with green gradient and glow
+- **Reset Button Display:** Fixed condition using optional chaining for proper reactivity
+
+## [1.0.3] - 2026-01-17
+
+### Added
+- **User-Specific Lanes:** Each user has their own lane instead of shared "Membership" lane
+- **Activity Selection Visual Feedback:** Green checkmark badge and glow effect on selected option
+- **Progress Tracking:** Visual progress bars on activity task cards with "+1" increment button
+
 ## [1.0.2] - 2026-01-17
 
 ### Added

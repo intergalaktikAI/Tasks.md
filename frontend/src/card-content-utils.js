@@ -138,3 +138,46 @@ export function setOwnerInContent(content, ownerEmail) {
     return `${newOwnerTag}\n${currentContent}`;
   }
 }
+
+/**
+ * Extract progress from card content
+ * Looks for pattern: **Progress:** X / Y completed
+ * @param {string} content - Card content
+ * @returns {Object|null} { completed: number, total: number } or null if not found
+ */
+export function getProgressFromContent(content) {
+  if (!content) {
+    return null;
+  }
+  const progressMatch = content.match(/\*\*Progress:\*\*\s*(\d+)\s*\/\s*(\d+)\s*completed/);
+  if (!progressMatch?.length) {
+    return null;
+  }
+  return {
+    completed: parseInt(progressMatch[1], 10),
+    total: parseInt(progressMatch[2], 10),
+  };
+}
+
+/**
+ * Update progress in card content
+ * @param {string} content - Current card content
+ * @param {number} completed - Number of completed items
+ * @param {number} total - Total number of items
+ * @returns {string} Updated content with new progress
+ */
+export function setProgressInContent(content, completed, total) {
+  const currentContent = content || "";
+  const newProgress = `**Progress:** ${completed} / ${total} completed`;
+
+  // Check if card already has progress
+  const progressMatch = currentContent.match(/\*\*Progress:\*\*\s*\d+\s*\/\s*\d+\s*completed/);
+
+  if (progressMatch) {
+    // Replace existing progress
+    return currentContent.replace(progressMatch[0], newProgress);
+  } else {
+    // Add new progress (this shouldn't normally happen for activity cards)
+    return `${currentContent}\n\n${newProgress}`;
+  }
+}

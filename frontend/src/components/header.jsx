@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, onMount, For } from "solid-js";
+import { createEffect, createMemo, createSignal, onMount, For, Show } from "solid-js";
 
 /**
  *
@@ -48,32 +48,35 @@ export function Header(props) {
         onInput={(e) => props.onSearchChange(e.target.value)}
         class="search-input"
       />
-      <div class="app-header__group-item">
-        <div class="app-header__group-item-label">Sort by:</div>
-        <select onChange={props.onSortChange} value={props.sort}>
-          <option value="none">Manually</option>
-          <option value="name:asc">Name asc</option>
-          <option value="name:desc">Name desc</option>
-          <option value="tags:asc">Tags asc</option>
-          <option value="tags:desc">Tags desc</option>
-          <option value="due:asc">Due date asc</option>
-          <option value="due:desc">Due date desc</option>
-          <option value="lastUpdated:desc">Last updated</option>
-          <option value="createdFirst:asc">Created first</option>
-        </select>
-      </div>
-      <div class="app-header__group-item">
-        {filterSelect()}
-      </div>
-      <div class="app-header__group-item">
-        <div class="app-header__group-item-label">View mode:</div>
-        <select onChange={props.onViewModeChange} value={props.viewMode}>
-          <option value="extended">Extended</option>
-          <option value="regular">Regular</option>
-          <option value="compact">Compact</option>
-          <option value="tight">Tight</option>
-        </select>
-      </div>
+      {/* Hide Sort/Filter/View for regular members - only show for moderators or when not logged in */}
+      <Show when={props.user?.role === "moderator"}>
+        <div class="app-header__group-item">
+          <div class="app-header__group-item-label">Sort by:</div>
+          <select onChange={props.onSortChange} value={props.sort}>
+            <option value="none">Manually</option>
+            <option value="name:asc">Name asc</option>
+            <option value="name:desc">Name desc</option>
+            <option value="tags:asc">Tags asc</option>
+            <option value="tags:desc">Tags desc</option>
+            <option value="due:asc">Due date asc</option>
+            <option value="due:desc">Due date desc</option>
+            <option value="lastUpdated:desc">Last updated</option>
+            <option value="createdFirst:asc">Created first</option>
+          </select>
+        </div>
+        <div class="app-header__group-item">
+          {filterSelect()}
+        </div>
+        <div class="app-header__group-item">
+          <div class="app-header__group-item-label">View mode:</div>
+          <select onChange={props.onViewModeChange} value={props.viewMode}>
+            <option value="extended">Extended</option>
+            <option value="regular">Regular</option>
+            <option value="compact">Compact</option>
+            <option value="tight">Tight</option>
+          </select>
+        </div>
+      </Show>
       <button 
         type="button" 
         onClick={props.onNewLaneBtnClick}
@@ -91,12 +94,10 @@ export function Header(props) {
       {props.user && (
         <div class="user-info">
           <span class="user-info__email">{props.user.email}</span>
-          {props.userProfile && props.userProfile.chosenActivity && (
-            <button class="user-info__reset" onClick={props.onResetActivity}>
-              Reset Selection
-            </button>
-          )}
-          <button class="user-info__logout" onClick={props.onLogout}>
+          <button type="button" class="user-info__reset" onClick={props.onResetActivity}>
+            Reset Selection
+          </button>
+          <button type="button" class="user-info__logout" onClick={props.onLogout}>
             Logout
           </button>
         </div>

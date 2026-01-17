@@ -110,10 +110,173 @@ On first login, each member must choose ONE of these three options:
 
 ## Pending Features
 
-### Progress Tracking
-- Track completion count per user (increment when task is marked done)
-- Show progress indicator on task cards (e.g., "3/10 completed")
-- Consider yearly reset for recurring tasks
+*No pending features at this time.*
 
-**Status:** Not yet implemented
+---
+
+### 12. User-Named Initial Lane ✅
+
+**Status:** COMPLETED (v1.0.4)
+
+**Description:** When user first logs in and selects activity, the lane created is named after the logged-in user.
+
+**Implemented:**
+- Lane named based on user's email (e.g., "john@example.com" → "John's Tasks")
+- Email prefix is capitalized and cleaned (dots/underscores become spaces)
+- Function `getUserLaneName()` handles the naming logic
+
+---
+
+## Bug Fixes (v1.0.5)
+
+### BUG FIX: Login Button Visibility ✅
+
+**Status:** FIXED & VERIFIED
+
+**Description:** Login button now extremely prominent with pulsing green glow animation.
+
+**Fixed:**
+- Gradient green background (`linear-gradient(135deg, #22c55e, #16a34a)`)
+- Pulsing animation effect (`pulse-green 2s infinite`)
+- Large shadow and border (`box-shadow: 0 8px 30px`)
+- Uppercase bold text (1.25rem, 700 weight)
+- 3px green border
+- Impossible to miss
+
+**CSS class:** `.login-button` in `index.css:1007-1041`
+
+---
+
+### BUG FIX: Reset Button ✅
+
+**Status:** FIXED & VERIFIED
+
+**Description:** Reset Selection button now properly shows when user has chosen an activity.
+
+**Fixed:**
+- Changed condition to use optional chaining `props.userProfile?.chosenActivity`
+- Uses SolidJS `<Show>` component for proper reactivity
+- Button appears in header next to Logout when activity is selected
+
+**Code:** `header.jsx:97-101`
+
+---
+
+### BUG FIX: Sort/View Mode Hidden ✅
+
+**Status:** FIXED & VERIFIED
+
+**Description:** Sort by, Filter by, and View mode dropdowns now hidden for regular members.
+
+**Fixed:**
+- Changed Show condition to `props.user?.role === "moderator"`
+- Only moderators see these controls
+- Regular logged-in members have simplified header
+
+**Code:** `header.jsx:51-79`
+
+---
+
+## IMPORTANT: Deployment Note
+
+**Frontend build must be copied to backend static folder:**
+```bash
+cd frontend && npm run build
+cp -r dist/* ../backend/static/
+```
+
+---
+
+### 9. Simplified Header for Members ✅
+
+**Status:** COMPLETED (v1.0.4)
+
+**Description:** Regular members don't need advanced sorting/filtering options. Simplified the UI by hiding these controls.
+
+**Implemented:**
+- "Sort by" dropdown hidden when logged in
+- "Filter by" dropdown hidden when logged in
+- "View mode" selector hidden when logged in
+- Code remains intact - only display is hidden via `<Show>` component
+- Moderators still see all controls (role="moderator" check)
+
+---
+
+### 10. Login Button Visibility ✅
+
+**Status:** COMPLETED (v1.0.4)
+
+**Description:** Made the Login button more prominent and visible.
+
+**Implemented:**
+- Bright green color (#22c55e) with high contrast
+- Larger padding and font size
+- Bold uppercase text with letter spacing
+- Green glow shadow effect
+- Hover animation (lifts up slightly)
+- Clearly stands out as primary action
+
+---
+
+### 11. Activity Selection - Better Visual Feedback ✅
+
+**Status:** COMPLETED (v1.0.4)
+
+**Description:** Improved visual feedback when clicking on an activity option during first login.
+
+**Implemented:**
+- Selected option has bright green border (3px thick)
+- Green-tinted background on selected option
+- Large green glow/shadow effect around selected option
+- Larger checkmark badge (48px) with shadow
+- Selected activity name turns green
+- Scale animation (1.03x) on selection
+- Impossible to miss which option is selected
+
+---
+
+## Recently Completed Features
+
+### 6. User-Specific Lanes ✅
+
+**Status:** COMPLETED (v1.0.3)
+
+**Description:** Each user now has their own lane instead of a shared "Membership" lane.
+
+**Implemented:**
+- Lane is named after the user (e.g., "John's Tasks" derived from email prefix)
+- Each user's lane is visible to all users (shared board)
+- Only the lane owner can edit/delete cards in their lane (enforced by `[owner:email]` tag)
+- Moderators can still edit any lane
+- Lane is deleted when user resets their activity selection (if empty)
+
+---
+
+### 7. Activity Selection Visual Feedback ✅
+
+**Status:** COMPLETED (v1.0.3)
+
+**Description:** Improved visual feedback on the first-login activity selection screen.
+
+**Implemented:**
+- Selected activity option now has a prominent green checkmark badge
+- Selected option has a visible box-shadow glow effect
+- Selected option slightly scales up (1.02x) for emphasis
+- Smooth animation when checkmark appears
+- Clear visual distinction between selected and unselected options
+
+---
+
+### 8. Progress Tracking ✅
+
+**Status:** COMPLETED (v1.0.3)
+
+**Description:** Visual progress tracking for activity task cards.
+
+**Implemented:**
+- Progress bar displayed on cards with `**Progress:** X / Y completed` in content
+- Shows current/total count (e.g., "3/10")
+- "+1" button to increment progress (visible only to card owner)
+- Progress is synced to user profile for persistence
+- Button hidden when progress reaches target
 

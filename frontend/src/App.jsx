@@ -23,7 +23,7 @@ import { makePersisted } from "@solid-primitives/storage";
 import { DragAndDrop } from "./components/drag-and-drop";
 import { useLocation, useNavigate } from "@solidjs/router";
 import { v7 } from "uuid";
-import { addTagToContent, removeTagFromContent, setDueDateInContent, getTagsFromContent, getOwnerFromContent, setOwnerInContent } from "./card-content-utils";
+import { addTagToContent, removeTagFromContent, setDueDateInContent, getTagsFromContent, getOwnerFromContent, setOwnerInContent, getProgressFromContent, setProgressInContent } from "./card-content-utils";
 import "./stylesheets/index.css";
 import { KeyboardNavigationDialog } from "./components/keyboard-navigation-dialog";
 import { Login } from "./components/login";
@@ -362,6 +362,48 @@ function App() {
       (cardToFind) => cardToFind.name !== card.name
     );
     setCards(cardsWithoutDeletedCard);
+  }
+
+  // Handle progress increment for activity cards
+  async function handleProgressIncrement(card) {
+    const progress = getProgressFromContent(card.content);
+    if (!progress || progress.completed >= progress.total) return;
+
+    const newCompleted = progress.completed + 1;
+    const newContent = setProgressInContent(card.content, newCompleted, progress.total);
+
+    await fetchWithAuth(
+      `${api}/resource${board()}/${encodeURIComponent(card.lane)}/${encodeURIComponent(card.name)}.md`,
+      {
+        method: "PATCH",
+        mode: "cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newContent }),
+      }
+    );
+
+    // Update local state
+    const newCards = structuredClone(cards());
+    const cardIndex = newCards.findIndex(
+      (c) => c.name === card.name && c.lane === card.lane
+    );
+    if (cardIndex !== -1) {
+      newCards[cardIndex].content = newContent;
+      setCards(newCards);
+    }
+
+    // Also update user profile progress if this is the user's activity card
+    if (userProfile()?.chosenActivity) {
+      await fetchWithAuth(`${api}/auth/profile`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          completedCount: newCompleted,
+        }),
+      });
+      setUserProfile({ ...userProfile(), completedCount: newCompleted });
+    }
   }
 
   function moveCardToLane(card, newLane) {
@@ -1268,15 +1310,24 @@ function App() {
     }
   };
 
+  // Get user's lane name based on email (use part before @)
+  const getUserLaneName = (email) => {
+    const namePart = email.split("@")[0];
+    // Capitalize first letter and clean up
+    const cleanName = namePart.charAt(0).toUpperCase() + namePart.slice(1).replace(/[._-]/g, " ");
+    return `${cleanName}'s Tasks`;
+  };
+
   // Handle first login activity selection - creates actual task cards
   const handleActivitySelect = async (activity) => {
     try {
-      const membershipLane = "Membership";
+      // Create user-specific lane instead of shared "Membership" lane
+      const userLane = getUserLaneName(user().email);
       const currentLanes = lanes();
 
-      // Create Membership lane if it doesn't exist
-      if (!currentLanes.includes(membershipLane)) {
-        await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(membershipLane)}`, {
+      // Create user's personal lane if it doesn't exist
+      if (!currentLanes.includes(userLane)) {
+        await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(userLane)}`, {
           method: "POST",
           mode: "cors",
           headers: { "Content-Type": "application/json" },
@@ -1285,9 +1336,9 @@ function App() {
 
       // Create the selected activity task card (avoid special chars in filename)
       const activityTaskName = `${activity.name} - ${activity.count}x required`;
-      const activityContent = `# ${activity.name}\n\n${activity.description}\n\n**Progress:** 0 / ${activity.count} completed\n\n[owner:${user().email}]\n[tag:Membership]`;
+      const activityContent = `# ${activity.name}\n\n${activity.description}\n\n**Progress:** 0 / ${activity.count} completed\n\n[owner:${user().email}]\n[tag:Activity]`;
 
-      await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(membershipLane)}/${encodeURIComponent(activityTaskName)}.md`, {
+      await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(userLane)}/${encodeURIComponent(activityTaskName)}.md`, {
         method: "POST",
         mode: "cors",
         headers: { "Content-Type": "application/json" },
@@ -1296,16 +1347,16 @@ function App() {
 
       // Create Pay Membership task card
       const payTaskName = "Pay Membership Fee";
-      const payContent = `# Pay Membership Fee\n\nAnnual membership fee payment required.\n\n**Status:** Pending\n\n[owner:${user().email}]\n[tag:Membership]\n[tag:Payment]`;
+      const payContent = `# Pay Membership Fee\n\nAnnual membership fee payment required.\n\n**Status:** Pending\n\n[owner:${user().email}]\n[tag:Payment]`;
 
-      await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(membershipLane)}/${encodeURIComponent(payTaskName)}.md`, {
+      await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(userLane)}/${encodeURIComponent(payTaskName)}.md`, {
         method: "POST",
         mode: "cors",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isFile: true, content: payContent }),
       });
 
-      // Save profile with chosen activity
+      // Save profile with chosen activity and lane name
       const response = await fetchWithAuth(`${api}/auth/profile`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -1317,6 +1368,7 @@ function App() {
           requiredCount: activity.count,
           completedCount: 0,
           membershipPaid: false,
+          userLane: userLane,
         }),
       });
 
@@ -1368,15 +1420,25 @@ function App() {
 
     try {
       const userEmail = user().email;
-      const membershipLane = "Membership";
+      // Get user's lane from profile, or compute it
+      const userLane = userProfile()?.userLane || getUserLaneName(userEmail);
 
-      // Find and delete user's membership task cards
-      const userMembershipCards = cards().filter(
-        (card) => card.lane === membershipLane && card.owner === userEmail
+      // Find and delete user's task cards in their lane
+      const userCards = cards().filter(
+        (card) => card.lane === userLane && card.owner === userEmail
       );
 
-      for (const card of userMembershipCards) {
-        await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(membershipLane)}/${encodeURIComponent(card.name)}.md`, {
+      for (const card of userCards) {
+        await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(userLane)}/${encodeURIComponent(card.name)}.md`, {
+          method: "DELETE",
+          mode: "cors",
+        });
+      }
+
+      // Check if lane is now empty and delete it
+      const remainingCards = cards().filter((card) => card.lane === userLane && card.owner !== userEmail);
+      if (remainingCards.length === 0) {
+        await fetchWithAuth(`${api}/resource${board()}/${encodeURIComponent(userLane)}`, {
           method: "DELETE",
           mode: "cors",
         });
@@ -1394,6 +1456,7 @@ function App() {
           requiredCount: null,
           completedCount: 0,
           membershipPaid: false,
+          userLane: null,
           firstLogin: true,
         }),
       });
@@ -1528,6 +1591,7 @@ function App() {
                         onSelectionChange={(isSelected) =>
                           toggleCardSelection(getCardKey(card), isSelected)
                         }
+                        onProgressIncrement={() => handleProgressIncrement(card)}
                         onFocus={() => {
                           setFocusedCardId(card.name);
                           setFocusedLaneIndex(null);

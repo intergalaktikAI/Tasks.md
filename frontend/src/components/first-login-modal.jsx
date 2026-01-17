@@ -54,6 +54,9 @@ export function FirstLoginModal(props) {
             <div
               class={`activity-option ${selectedOption()?.id === activity.id ? "activity-option--selected" : ""}`}
               onClick={() => setSelectedOption(activity)}
+              onKeyDown={(e) => e.key === "Enter" && setSelectedOption(activity)}
+              role="button"
+              tabIndex="0"
             >
               <div class="activity-icon">{activity.icon}</div>
               <div class="activity-details">
@@ -63,6 +66,14 @@ export function FirstLoginModal(props) {
                   Required: {activity.count} time{activity.count > 1 ? "s" : ""}
                 </span>
               </div>
+              {selectedOption()?.id === activity.id && (
+                <div class="activity-check">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Selected">
+                    <title>Selected</title>
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -73,6 +84,7 @@ export function FirstLoginModal(props) {
         </p>
 
         <button
+          type="button"
           class="first-login-confirm"
           onClick={handleConfirm}
           disabled={!selectedOption() || loading()}

@@ -1004,6 +1004,42 @@ a > * {
   cursor: not-allowed;
 }
 
+/* Login button - VERY prominent styling */
+.login-button {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+  color: white !important;
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  padding: 1.25rem 2rem !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 30px rgba(34, 197, 94, 0.6), 0 0 0 4px rgba(34, 197, 94, 0.2) !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease !important;
+  border: 3px solid #22c55e !important;
+  margin-top: 1.5rem !important;
+  animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% {
+    box-shadow: 0 8px 30px rgba(34, 197, 94, 0.6), 0 0 0 4px rgba(34, 197, 94, 0.2);
+  }
+  50% {
+    box-shadow: 0 8px 40px rgba(34, 197, 94, 0.8), 0 0 0 8px rgba(34, 197, 94, 0.3);
+  }
+}
+
+.login-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+  box-shadow: 0 12px 40px rgba(34, 197, 94, 0.7), 0 0 0 6px rgba(34, 197, 94, 0.3) !important;
+  transform: translateY(-3px) scale(1.02);
+}
+
+.login-button:active:not(:disabled) {
+  transform: translateY(0) scale(1);
+}
+
 .login-box .error-message {
   color: var(--color-alt-1);
   font-size: 0.875rem;
@@ -1068,6 +1104,55 @@ a > * {
   opacity: 0.8;
 }
 
+/* Progress bar styles */
+.card__progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.card__progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--color-background-4);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.card__progress-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 3px;
+  transition: width 0.3s ease-out;
+}
+
+.card__progress-text {
+  font-size: 0.75rem;
+  color: var(--color-foreground);
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.card__progress-btn {
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: var(--color-accent);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 28px;
+}
+
+.card__progress-btn:hover {
+  opacity: 0.85;
+  transform: scale(1.05);
+}
+
 /* Read-only notice in expanded card */
 .dialog__read-only-notice {
   background: var(--color-alt-1);
@@ -1130,8 +1215,9 @@ a > * {
   border: 2px solid var(--color-background-4);
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease-out;
   background: var(--color-background-3);
+  align-items: center;
 }
 
 .activity-option:hover {
@@ -1139,8 +1225,43 @@ a > * {
 }
 
 .activity-option--selected {
-  border-color: var(--color-accent);
-  background: var(--color-background-4);
+  border-color: #22c55e !important;
+  border-width: 3px !important;
+  background: rgba(34, 197, 94, 0.15) !important;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.3), 0 8px 25px rgba(34, 197, 94, 0.25) !important;
+  transform: scale(1.03);
+}
+
+.activity-option--selected .activity-details h3 {
+  color: #22c55e !important;
+}
+
+.activity-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: #22c55e;
+  border-radius: 50%;
+  color: white;
+  flex-shrink: 0;
+  animation: checkmark-pop 0.3s ease-out;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+}
+
+@keyframes checkmark-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .activity-icon {

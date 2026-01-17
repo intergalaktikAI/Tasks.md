@@ -69,7 +69,7 @@ export function Login(props) {
             />
           </div>
           {error() && <div class="error-message">{error()}</div>}
-          <button type="submit" disabled={loading()}>
+          <button type="submit" class="login-button" disabled={loading()}>
             {loading() ? "Logging in..." : "Login"}
           </button>
         </form>

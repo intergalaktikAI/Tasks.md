@@ -438,6 +438,10 @@ app.use(mount((`${BASE_PATH || '/'}`), (ctx, next) => {
     const fileName = ctx.request.url.split('/').at(-1);
     ctx.request.url = `/assets/${fileName}`
   }
+  // Handle PWA service worker files at root level
+  else if (/^\/(registerSW\.js|sw\.js|workbox-[^/]+\.js|manifest\.webmanifest)$/.test(ctx.request.url)) {
+    // Keep the URL as-is for these files
+  }
   // default to index.html
   else {
     ctx.request.url = '/'

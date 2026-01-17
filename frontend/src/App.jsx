@@ -2,6 +2,8 @@ import {
   createSignal,
   For,
   Show,
+  Switch,
+  Match,
   onMount,
   createMemo,
   createEffect,
@@ -1320,29 +1322,24 @@ function App() {
     setCards([]);
   };
 
-  // Show loading while checking auth
-  if (!authChecked()) {
-    return (
-      <div class="login-container">
-        <div class="login-box">
-          <h1>Loading...</h1>
-        </div>
-      </div>
-    );
-  }
-
-  // Show login if not authenticated
-  if (!user()) {
-    return <Login onLogin={handleLogin} />;
-  }
-
-  // Show first login modal if needed
-  if (showFirstLoginModal()) {
-    return <FirstLoginModal onSelect={handleActivitySelect} />;
-  }
-
+  // Use Switch/Match for proper SolidJS reactivity (early returns don't work with signals)
   return (
-    <div
+    <Switch>
+      <Match when={!authChecked()}>
+        <div class="login-container">
+          <div class="login-box">
+            <h1>Loading...</h1>
+          </div>
+        </div>
+      </Match>
+      <Match when={authChecked() && !user()}>
+        <Login onLogin={handleLogin} />
+      </Match>
+      <Match when={authChecked() && user() && showFirstLoginModal()}>
+        <FirstLoginModal onSelect={handleActivitySelect} />
+      </Match>
+      <Match when={authChecked() && user() && !showFirstLoginModal()}>
+        <div
       ref={(el) => mainContainerRef = el}
       tabIndex="-1"
       onKeyDown={handleMainBoardKeyDown}
@@ -1561,6 +1558,8 @@ function App() {
         <KeyboardNavigationDialog onClose={() => setShowHelpDialog(false)} />
       </Show>
     </div>
+      </Match>
+    </Switch>
   );
 }
 

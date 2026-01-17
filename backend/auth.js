@@ -142,7 +142,7 @@ function authMiddleware(configDir) {
     }
 
     // Public routes that don't require auth
-    const publicRoutes = ["/auth/login", "/auth/status"];
+    const publicRoutes = ["/auth/login", "/auth/status", "/title"];
     const isPublicRoute = publicRoutes.some((route) =>
       ctx.request.url.startsWith(route)
     );
